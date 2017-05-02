@@ -4,6 +4,12 @@ package com.example.tomislav.gdjejedragan;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Criteria;
+import android.location.Geocoder;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -12,6 +18,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
 import android.Manifest;
+
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -20,13 +27,19 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-public class MainActivity extends AppCompatActivity  implements OnMapReadyCallback {
+import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
+
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private static final int REQUEST_LOCATION_PERMISSION = 10;
     GoogleMap mGoogleMap;
     MapFragment mMapFragment;
+    LocationListener mLocationListener;
+    LocationManager mLocationManager;
     private GoogleMap.OnMapClickListener mCustomOnMapClickListener;
-    private TextView tvLocationDisplay;
+    private TextView tvCurrentLocation;
 
 
     @Override
@@ -34,10 +47,101 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         this.setUI();
+        this.mLocationManager = (LocationManager) this.getSystemService(LOCATION_SERVICE);
+        this.mLocationListener = new SimpleLocationListener();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (hasLocationPermission() == false) {
+            requestPermission();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (this.hasLocationPermission()) {
+            startTracking();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopTracking();
+    }
+
+    private void startTracking() {
+        Log.d("Tracking", "Tracking started.");
+        Criteria criteria = new Criteria();
+        criteria.setAccuracy(Criteria.ACCURACY_FINE);
+        String locationProvider = this.mLocationManager.getBestProvider(criteria, true);
+        long minTime = 1000;
+        float minDistance = 10;
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        this.mLocationManager.requestLocationUpdates(locationProvider, minTime, minDistance,
+                this.mLocationListener);
+    }
+    private void stopTracking() {
+        Log.d("Tracking", "Tracking stopped.");
+        this.mLocationManager.removeUpdates(this.mLocationListener);
+    }
+
+    private void updateLocationDisplay(Location location){
+        String message =
+                "Lat: " + location.getLatitude() + "\nLon:" + location.getLongitude() +"\n";
+        tvCurrentLocation.setText(message);
+        if(Geocoder.isPresent()){
+            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+            try {
+                List<Address> nearByAddresses = geocoder.getFromLocation(
+                        location.getLatitude(), location.getLongitude(),1);
+                if(nearByAddresses.size() > 0) {
+                    StringBuilder stringBuilder = new StringBuilder();
+                    Address nearestAddress = nearByAddresses.get(0);
+                    stringBuilder.append(nearestAddress.getAddressLine(0)).append("\n")
+                            .append(nearestAddress.getLocality()).append("\n")
+                            .append(nearestAddress.getCountryName());
+                    tvCurrentLocation.append(stringBuilder.toString());
+                }
+            } catch (IOException e) { e.printStackTrace(); }
+        }
+    }
+
+
+    private class SimpleLocationListener implements android.location.LocationListener {
+
+        @Override
+        public void onLocationChanged(Location location) {
+            updateLocationDisplay(location);
+        }
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+        }
+
+        @Override
+        public void onProviderEnabled(String provider) {
+        }
+
+        @Override
+        public void onProviderDisabled(String provider) {
+        }
     }
 
     private void setUI() {
-        this.tvLocationDisplay = (TextView) this.findViewById(R.id.tvLocationDisplay);
+        this.tvCurrentLocation = (TextView) this.findViewById(R.id.tvLocationDisplay);
 
         this.mMapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.fGoogleMap);
         this.mMapFragment.getMapAsync(this);
@@ -45,9 +149,9 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
             @Override
             public void onMapClick(LatLng latLng) {
                 MarkerOptions newMarkerOptions = new MarkerOptions();
-                newMarkerOptions.icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_launcher));
-                newMarkerOptions.title("My place");
-                newMarkerOptions.snippet("I declare this my teritory!");
+                newMarkerOptions.icon(BitmapDescriptorFactory.fromResource(R.mipmap.pin));
+                newMarkerOptions.title(getString(R.string.pinTitle));
+                newMarkerOptions.snippet(getString(R.string.pinText));
                 newMarkerOptions.position(latLng);
                 mGoogleMap.addMarker(newMarkerOptions);
             }
@@ -106,7 +210,7 @@ public class MainActivity extends AppCompatActivity  implements OnMapReadyCallba
         }
         else{
             Log.d("Permission","Permission not granted. User pressed deny and don't show again.");
-            tvLocationDisplay.setText("Sorry, we really need that permission");
+            tvCurrentLocation.setText("Sorry, we really need that permission");
         }
     }
     private void displayDialog() {
