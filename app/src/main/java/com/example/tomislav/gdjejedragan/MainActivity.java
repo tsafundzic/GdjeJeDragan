@@ -10,6 +10,9 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.AudioManager;
+import android.media.SoundPool;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -28,6 +31,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
@@ -40,6 +44,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     LocationManager mLocationManager;
     private GoogleMap.OnMapClickListener mCustomOnMapClickListener;
     private TextView tvCurrentLocation;
+    SoundPool mSoundPool; boolean mLoaded = false;
+    HashMap<Integer, Integer> mSoundMap = new HashMap<>();
 
 
     @Override
@@ -50,6 +56,29 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         this.mLocationManager = (LocationManager) this.getSystemService(LOCATION_SERVICE);
         this.mLocationListener = new SimpleLocationListener();
     }
+
+
+    private void loadSounds(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            this.mSoundPool = new SoundPool.Builder().setMaxStreams(10).build();
+        }else{
+            this.mSoundPool = new SoundPool(10, AudioManager.STREAM_MUSIC,0);
+        }
+        this.mSoundPool.setOnLoadCompleteListener(new SoundPool.OnLoadCompleteListener() {
+            @Override
+            public void onLoadComplete(SoundPool soundPool, int sampleId, int status) {
+                Log.d("Test",String.valueOf(sampleId));
+                mLoaded = true;
+            }
+        });
+        this.mSoundMap.put(R.raw.drop, this.mSoundPool.load(this, R.raw.drop,1));
+    }
+
+    void playSound(int selectedSound){
+        int soundID = this.mSoundMap.get(selectedSound);
+        this.mSoundPool.play(soundID, 1,1,1,0,1f);
+    }
+
 
     @Override
     protected void onStart() {
@@ -154,8 +183,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 newMarkerOptions.snippet(getString(R.string.pinText));
                 newMarkerOptions.position(latLng);
                 mGoogleMap.addMarker(newMarkerOptions);
+                playSound(R.raw.drop);
             }
         };
+
+        loadSounds();
     }
 
 
