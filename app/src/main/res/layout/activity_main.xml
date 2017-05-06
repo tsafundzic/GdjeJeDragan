@@ -8,14 +8,17 @@
         android:id="@+id/bUTakePhoto"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/ufotkaj"/>
+        android:text="@string/ufotkaj"
+        android:layout_margin="@dimen/ItemMargin"/>
 
     <TextView
         android:id="@+id/tvLocationDisplay"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"
-        android:layout_below="@id/bUTakePhoto"/>
+        android:layout_below="@id/bUTakePhoto"
+        android:fontFamily="sans-serif-smallcaps"
+        android:layout_margin="@dimen/ItemMargin"/>
 
     <fragment
         android:id="@+id/fGoogleMap"
