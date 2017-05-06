@@ -2,8 +2,13 @@ package com.example.tomislav.gdjejedragan;
 
 
 import android.app.AlertDialog;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Criteria;
 import android.location.Geocoder;
@@ -11,14 +16,21 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.media.AudioManager;
+import android.media.RingtoneManager;
 import android.media.SoundPool;
+import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.Manifest;
 
@@ -30,6 +42,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -38,6 +51,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private static final int REQUEST_LOCATION_PERMISSION = 10;
+    private static final int PHOTO_TAKE = 1337;
     GoogleMap mGoogleMap;
     MapFragment mMapFragment;
     LocationListener mLocationListener;
@@ -46,6 +60,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private TextView tvCurrentLocation;
     SoundPool mSoundPool; boolean mLoaded = false;
     HashMap<Integer, Integer> mSoundMap = new HashMap<>();
+    Uri photoPath;
+    Button bTakePhoto;
+    StringBuilder stringBuilder;
 
 
     @Override
@@ -137,7 +154,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 List<Address> nearByAddresses = geocoder.getFromLocation(
                         location.getLatitude(), location.getLongitude(),1);
                 if(nearByAddresses.size() > 0) {
-                    StringBuilder stringBuilder = new StringBuilder();
+                    stringBuilder = new StringBuilder();
                     Address nearestAddress = nearByAddresses.get(0);
                     stringBuilder.append(nearestAddress.getAddressLine(0)).append("\n")
                             .append(nearestAddress.getLocality()).append("\n")
@@ -171,7 +188,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void setUI() {
         this.tvCurrentLocation = (TextView) this.findViewById(R.id.tvLocationDisplay);
-
+        this.bTakePhoto = (Button) findViewById(R.id.bUTakePhoto);
         this.mMapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.fGoogleMap);
         this.mMapFragment.getMapAsync(this);
         this.mCustomOnMapClickListener = new GoogleMap.OnMapClickListener() {
@@ -187,9 +204,51 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         };
 
+        this.bTakePhoto.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+
+                File file = new File(Environment.getExternalStorageDirectory(),
+                        "IMG_" + stringBuilder+ ".jpg");
+                photoPath = Uri.fromFile(file);
+                intent.putExtra(MediaStore.EXTRA_OUTPUT, photoPath);
+
+                startActivityForResult(intent, PHOTO_TAKE);
+            }
+        });
+
         loadSounds();
     }
 
+
+    private void sendNotification() {
+        String msgText = getString(R.string.youtookphoto);
+        Intent notificationIntent = new Intent(Intent.ACTION_VIEW, photoPath);
+        //notificationIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        PendingIntent notificationPendingIntent = PendingIntent.getActivity(
+                this,0,notificationIntent,PendingIntent.FLAG_UPDATE_CURRENT);
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this);
+        notificationBuilder.setAutoCancel(true)
+                .setContentTitle(getString(R.string.notification_title))
+                .setContentText(msgText)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentIntent(notificationPendingIntent)
+                .setLights(Color.BLUE, 2000, 1000)
+                .setVibrate(new long[]{1000,1000,1000,1000,1000})
+                .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
+        Notification notification = notificationBuilder.build();
+        NotificationManager notificationManager =
+                (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        notificationManager.notify(0,notification);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+
+            sendNotification();
+    }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
@@ -265,5 +324,5 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     }
                 })
                 .show();
-}
+    }
 }

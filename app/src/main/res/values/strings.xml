@@ -3,4 +3,6 @@
     <string name="ufotkaj">Ufotkaj!</string>
     <string name="pinTitle">Pin</string>
     <string name="pinText">You clicked on this place!</string>
+    <string name="notification_title">Gdje je Dragan?</string>
+    <string name="youtookphoto">You took photo. View your photo.</string>
 </resources>
