@@ -1,6 +1,5 @@
 package com.example.tomislav.gdjejedragan;
 
-
 import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationManager;
